@@ -5,16 +5,17 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
+library(janitor)
 ```
 
 ```{r}
-match_data22 <- read_csv("data/2022_match_data.csv")
+match_data_master <- read_csv("data/2022_match_data.csv")
 ```
 
-A whole bunch of these columns can be logicals. `result` is a binary check for win/loss, all the first blood columns are to do with just identifying involvement, as is `firstdragon`, `firstherald`, `firstbaron`, and the three metrics surrounding first tower. Useful! Going to rename `result` as `victor` too, for better clarity
+A whole bunch of these columns can be logicals. `result` is a binary check for win/loss, all the first blood columns are to do with just identifying involvement, as is `firstdragon`, `firstherald`, `firstbaron`, and the three metrics surrounding first tower. Useful! Going to rename `result` as `winner` too, for better clarity, and snake_case all the column headers.
 
 ```{r}
-match_data22_adjusted <- match_data22 %>% 
+match_data_master_adjusted <- match_data_master %>% 
     mutate(across(c(result, 
                     firstblood, 
                     firstbloodkill, 
@@ -26,81 +27,38 @@ match_data22_adjusted <- match_data22 %>%
                     firsttower,
                     firstmidtower,
                     firsttothreetowers), ~as.logical(.x))) %>% 
-    rename(victor = result)
+    rename(c("winner" = "result", 
+             "game_id" = "gameid",
+             "data_completeness" = "datacompleteness",
+             "paricipant_id" = "participantid",
+             "player_name" = "playername",
+             "player_id" = "playerid",
+             "team_name" = "teamname",
+             "team_id" = "teamid",
+             "ban_1" = "ban1",
+             "ban_2" = "ban2",
+             "ban_3" = "ban3",
+             "ban_4" = "ban4",
+             "ban_5" = "ban5",
+             "game_length" = "gamelength",
+             "team_kills" = "teamkills",
+             "team_deaths" = "teamdeaths",
+             "double_kills" = "doublekills",
+             "triple_kills" = "triplekills",
+             "quadra_kills" = "quadrakills",
+             "penta_kills" = "pentakills",
+             "team_kpm" = "teamkpm",
+             "c_kpm" = "ckpm",
+             "elemental_drakes" = "elementaldrakes",
+             "first_blood" = "firstblood", 
+             "first_blood_kill" = "firstbloodkill",
+             "first_blood_assist" = "firstbloodassist",
+             "first_blood_victim" = "firstbloodvictim",
+             "first_dragon" = "firstdragon",
+             "first_herald" = "firstherald",
+             "first_baron" = "firstbaron",
+             "first_tower" = "firsttower",
+             "first_mid_tower" = "firstmidtower",
+             "first_to_three_towers" = "firsttothreetowers"
+             ))
 ```
-
-Time for a few quick summaries for the road. Let's have a look at some basic stuff - winrate achieving firsts. The data is a little fiddly in that it consolidates results into a collective for the teams in every match -- fortunately, `playername` is `NA` when this is true, so you can pull out team statistics pretty easily. 
-
-Filtering out records without the data because they aren't helpful.
-
-First blood.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firstblood)) %>% 
-  select(teamname, firstblood, victor) %>% 
-  group_by(firstblood, victor) %>% 
-  summarise(count = n())
-```
-
-First dragon.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firstdragon)) %>% 
-  select(teamname, firstdragon, victor) %>% 
-  group_by(firstdragon, victor) %>% 
-  summarise(count = n())
-```
-
-First Baron.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firstbaron)) %>% 
-  select(teamname, firstbaron, victor) %>% 
-  group_by(firstbaron, victor) %>% 
-  summarise(count = n())
-```
-
-First tower.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firsttower)) %>% 
-  select(teamname, firsttower, victor) %>% 
-  group_by(firsttower, victor) %>% 
-  summarise(count = n())
-```
-
-First Herald.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firstherald)) %>% 
-  select(teamname, firstherald, victor) %>% 
-  group_by(firstherald, victor) %>% 
-  summarise(count = n())
-```
-
-I'm noticing something -- logically, every match should have a (first = false, victor = false) and (first = true, victor = true) pairing, and this isn't happening -- there's a variance in every set. Note in the `firstherald` set that the pairing doesn't equalise in *either* variation!
-
-Time to investigate! There's some sort of corruption happening here.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(is.na(playername), !is.na(firstherald)) %>% 
-  select(gameid, teamname, firstherald, victor) %>% 
-  group_by(gameid, firstherald, victor) %>%
-  summarise(count = n()) %>% 
-  filter(count > 1)
-```
-
-Found you! This game has no victor recorded.
-
-```{r}
-match_data22_adjusted %>% 
-  filter(gameid == "ESPORTSTMNT05_2980802")
-```
-
-This is an anomaly in the data. I looked it up and there's some weirdness going on for sure. I've notified the person who owns the dataset and we'll see what he says!
