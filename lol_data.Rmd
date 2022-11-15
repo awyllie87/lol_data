@@ -3,11 +3,6 @@ title: "League of Legends 2022 Match Data Analysis"
 output: html_notebook
 ---
 
-```{r}
-library(tidyverse)
-library(janitor)
-```
-
 # Introduction
 
 ## Preamble
@@ -16,31 +11,53 @@ The plan here is to use this dataset, kindly provided by Tim Sevenhuysen over at
 
 ## Data
 
-###What is this data?
+### What is this data?
 
 The data I'm reading in is an import of all League of Legends e-sports matches across pretty close to, if not all, the leagues operating in the world in 2022. Until the end of the year, this data will be updated regularly, so I want to make my work agnostic to the amount of data presented -- the way the data is laid out in the imported .csv is extremely unlikely to change, but more rows will be added over time. This allows me to just redownload a newer version of the data whenever I feel like it and everything should still work.
 
-###How is the data broken down in the import?
+### How is the data broken down in the import?
 
 Every match is broken down into 12 rows --
 
 -- 1 row for each of the 5 players on each team
+<br>
 -- 1 row for for each team 
 
-Some of the statistics are assigned to the teams, but not individual players. For example, which team secured an objective first, or total counts on things like towers that haven't been tracked at a player level. In other cases it serves as an aggregate of the group of 5 players, i.e. total kills, total deaths, etc.
+Some of the statistics are assigned to the teams, but not individual players.
+
+For example, which team secured an objective first, or total counts on things like towers that haven't been tracked at a player level. In other cases it serves as an aggregate of the group of 5 players, i.e. total kills, total deaths, etc.
 
 It's worth bearing this in mind for analysis, as if you try to examine the objectives secured by an individual player, you won't have any luck!
 
-Every match has been assigned a `data completeness`, which refers in most cases to the depth of reporting: incomplete columns typically don't have breakdowns by 10 or 15 minutes, analyse play in the jungle, track kill-streaks like pentakills, etc. The general data will be there, but the granularity will not. **Any analysis of these data-points will probably exclude incomplete matches.**
+Every match has been assigned a `data completeness`, which refers in most cases to the depth of reporting: incomplete columns typically don't have breakdowns by 10 or 15 minutes, analyse play in the jungle, track kill-streaks like pentakills, etc. The general data will be there, but the granularity will not. 
+
+**Any analysis of these data-points will probably exclude incomplete matches.**
+
+# First Steps
+
+## Libraries
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+
+## Data Import
+
+First step is to read in the .csv
 
 ```{r}
 match_data_master <- read_csv("data/2022_match_data.csv")
 ```
+## Clean-up
 
-A whole bunch of these columns can be logicals. `result` is a binary check for win/loss, all the first blood columns are to do with just identifying involvement, as is `firstdragon`, `firstherald`, `firstbaron`, and the three metrics surrounding first tower. Useful! Going to rename `result` as `winner` too, for better clarity, and snake_case all the column headers.
+A whole bunch of these columns can be booleans. `result` is a binary check for win/loss, all the first blood columns are to do with just identifying involvement, as is `firstdragon`, `firstherald`, `firstbaron`, and the three metrics surrounding first tower. 
+
+Going to rename `result` as `winner` for better clarity and snake_case all the column headers. Hopefully at some point I figure out a cleaner way to do this.
 
 ```{r}
-match_data_master_adjusted <- match_data_master %>% 
+match_data <- match_data_master %>% 
     mutate(across(c(result, 
                     firstblood, 
                     firstbloodkill, 
@@ -55,7 +72,7 @@ match_data_master_adjusted <- match_data_master %>%
     rename(c("winner" = "result", 
              "game_id" = "gameid",
              "data_completeness" = "datacompleteness",
-             "paricipant_id" = "participantid",
+             "participant_id" = "participantid",
              "player_name" = "playername",
              "player_id" = "playerid",
              "team_name" = "teamname",
@@ -135,5 +152,78 @@ match_data_master_adjusted <- match_data_master %>%
              "first_mid_tower" = "firstmidtower",
              "first_to_three_towers" = "firsttothreetowers"
              ))
+```
+
+## Basic Breakdowns
+
+Let's have a look at some basic information about the data.
+
+```{r}
+games <- match_data %>% 
+  filter(!is.na(game_id)) %>% 
+  group_by(game_id) %>% 
+  summarise() %>% 
+  count() %>% 
+  pull()
+
+leagues <- match_data %>% 
+  filter(!is.na(league)) %>% 
+  group_by(league) %>% 
+  summarise() %>% 
+  count() %>% 
+  pull()
+
+players <- match_data %>% 
+  filter(!is.na(player_name)) %>% 
+  group_by(player_name) %>% 
+  summarise() %>% 
+  count() %>% 
+  pull()
+
+player_ids <- match_data %>% 
+  filter(!is.na(player_id)) %>% 
+  group_by(player_id) %>% 
+  summarise() %>% 
+  count() %>% 
+  pull()
+
+quick_stats <- tibble(games, leagues, players, player_ids)
+
+quick_stats
+```
+
+There's a mismatch between the number of players and their IDs. Are some names attributed to multiple IDs?
+
+```{r}
+match_data %>% 
+  filter(!is.na(player_name), !is.na(player_id)) %>% 
+  select(player_name, player_id) %>% 
+  group_by(player_name) %>% 
+  filter(n_distinct(player_id) > 1) %>% 
+  distinct() %>% 
+  summarise(id_count = n()) %>% 
+  arrange(player_name)
+```
+
+```{r}
+team_wins <- match_data %>% 
+  filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
+  group_by(team_name) %>% 
+  summarise(wins = n()) %>% 
+  arrange(desc(wins))
+
+team_losses <- match_data %>% 
+  filter(participant_id == 100 & winner == FALSE | participant_id == 200 & winner == FALSE) %>% 
+  group_by(team_name) %>% 
+  summarise(losses = n()) %>% 
+  arrange(desc(losses))
+
+world_table <- team_wins %>% 
+  inner_join(team_losses) %>% 
+  mutate(played = rowSums(across(c("wins", "losses")))) %>% 
+  arrange(desc(wins))
+
+world_table %>% 
+  filter(team_name != "unknown team")
 ```
 
