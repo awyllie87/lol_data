@@ -8,6 +8,31 @@ library(tidyverse)
 library(janitor)
 ```
 
+# Introduction
+
+## Preamble
+
+The plan here is to use this dataset, kindly provided by Tim Sevenhuysen over at Oracle's Elixir, to practice what I'm learning on the CodeClan Data Analysis bootcamp. Along with the git repository, it'll allow me to work on this through the weeks of the course and have a detailed history of adjustments via git, plus hopefully have a pretty interesting workbook to show off once I'm done. 
+
+## Data
+
+###What is this data?
+
+The data I'm reading in is an import of all League of Legends e-sports matches across pretty close to, if not all, the leagues operating in the world in 2022. Until the end of the year, this data will be updated regularly, so I want to make my work agnostic to the amount of data presented -- the way the data is laid out in the imported .csv is extremely unlikely to change, but more rows will be added over time. This allows me to just redownload a newer version of the data whenever I feel like it and everything should still work.
+
+###How is the data broken down in the import?
+
+Every match is broken down into 12 rows --
+
+-- 1 row for each of the 5 players on each team
+-- 1 row for for each team 
+
+Some of the statistics are assigned to the teams, but not individual players. For example, which team secured an objective first, or total counts on things like towers that haven't been tracked at a player level. In other cases it serves as an aggregate of the group of 5 players, i.e. total kills, total deaths, etc.
+
+It's worth bearing this in mind for analysis, as if you try to examine the objectives secured by an individual player, you won't have any luck!
+
+Every match has been assigned a `data completeness`, which refers in most cases to the depth of reporting: incomplete columns typically don't have breakdowns by 10 or 15 minutes, analyse play in the jungle, track kill-streaks like pentakills, etc. The general data will be there, but the granularity will not. **Any analysis of these data-points will probably exclude incomplete matches.**
+
 ```{r}
 match_data_master <- read_csv("data/2022_match_data.csv")
 ```
@@ -47,9 +72,58 @@ match_data_master_adjusted <- match_data_master %>%
              "triple_kills" = "triplekills",
              "quadra_kills" = "quadrakills",
              "penta_kills" = "pentakills",
-             "team_kpm" = "teamkpm",
+             "team_kpm" = "team kpm",
              "c_kpm" = "ckpm",
              "elemental_drakes" = "elementaldrakes",
+             "dragons_unknown" = "dragons (type unknown)",
+             "damage_to_champions" = "damagetochampions",
+             "damage_share" = "damageshare",
+             "damage_taken_per_minute" = "damagetakenperminute",
+             "damage_mitigated_per_minute" = "damagemitigatedperminute",
+             "wards_placed" = "wardsplaced",
+             "wards_killed" = "wardskilled",
+             "control_wards_bought" = "controlwardsbought",
+             "vision_score" = "visionscore",
+             "total_gold" = "totalgold",
+             "earned_gold" = "earnedgold",
+             "earned_gpm" = "earned gpm",
+             "earned_gold_share" = "earnedgoldshare",
+             "gold_spent" = "goldspent",
+             "total_cs" = "total cs",
+             "minion_kills" = "minionkills",
+             "monster_kills" = "monsterkills",
+             "monster_kills_own_jungle" = "monsterkillsownjungle",
+             "monster_kills_enemy_jungle" = "monsterkillsenemyjungle",
+             "gold_at_10_mins" = "goldat10",
+             "xp_at_10_mins" = "xpat10",
+             "cs_at_10_mins" = "csat10",
+             "opp_gold_at_10" = "opp_goldat10",
+             "opp_xp_at_10" = "opp_xpat10",
+             "opp_cs_at_10" = "opp_csat10",
+             "gold_diff_at_10_mins" = "golddiffat10",
+             "xp_diff_at_10_mins" = "xpdiffat10",
+             "cs_diff_at_10_mins" = "csdiffat10",
+             "kills_at_10_mins" = "killsat10",
+             "assists_at_10_mins" = "assistsat10",
+             "deaths_at_10_mins" ="deathsat10",
+             "opp_kills_at_10" = "opp_killsat10",
+             "opp_assists_at_10" = "opp_assistsat10",
+             "opp_deaths_at_10" = "opp_deathsat10",
+             "gold_at_15_mins" = "goldat15",
+             "xp_at_15_mins" = "xpat15",
+             "cs_at_15_mins" = "csat15",
+             "opp_gold_at_15" = "opp_goldat15",
+             "opp_xp_at_15" = "opp_xpat15",
+             "opp_cs_at_15" = "opp_csat15",
+             "gold_diff_at_15_mins" = "golddiffat15",
+             "xp_diff_at_15_mins" = "xpdiffat15",
+             "cs_diff_at_15_mins" = "csdiffat15",
+             "kills_at_15_mins" = "killsat15",
+             "assists_at_15_mins" = "assistsat15",
+             "deaths_at_15_mins" ="deathsat15",
+             "opp_kills_at_15" = "opp_killsat15",
+             "opp_assists_at_15" = "opp_assistsat15",
+             "opp_deaths_at_15" = "opp_deathsat15",
              "first_blood" = "firstblood", 
              "first_blood_kill" = "firstbloodkill",
              "first_blood_assist" = "firstbloodassist",
@@ -62,3 +136,4 @@ match_data_master_adjusted <- match_data_master %>%
              "first_to_three_towers" = "firsttothreetowers"
              ))
 ```
+
