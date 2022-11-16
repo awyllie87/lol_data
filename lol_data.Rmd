@@ -48,7 +48,7 @@ library(janitor)
 First step is to read in the .csv
 
 ```{r}
-match_data_master <- read_csv("data/2022_match_data.csv")
+global_data_master <- read_csv("data/2022_match_data.csv")
 ```
 ## Clean-up
 
@@ -57,7 +57,7 @@ A whole bunch of these columns can be booleans. `result` is a binary check for w
 Going to rename `result` as `winner` for better clarity and snake_case all the column headers. Hopefully at some point I figure out a cleaner way to do this.
 
 ```{r}
-match_data <- match_data_master %>% 
+global_data <- global_data_master %>% 
     mutate(across(c(result, 
                     firstblood, 
                     firstbloodkill, 
@@ -159,28 +159,28 @@ match_data <- match_data_master %>%
 Let's have a look at some basic information about the data.
 
 ```{r}
-games <- match_data %>% 
+games <- global_data %>% 
   filter(!is.na(game_id)) %>% 
   group_by(game_id) %>% 
   summarise() %>% 
   count() %>% 
   pull()
 
-leagues <- match_data %>% 
+leagues <- global_data %>% 
   filter(!is.na(league)) %>% 
   group_by(league) %>% 
   summarise() %>% 
   count() %>% 
   pull()
 
-players <- match_data %>% 
+players <- global_data %>% 
   filter(!is.na(player_name)) %>% 
   group_by(player_name) %>% 
   summarise() %>% 
   count() %>% 
   pull()
 
-player_ids <- match_data %>% 
+player_ids <- global_data %>% 
   filter(!is.na(player_id)) %>% 
   group_by(player_id) %>% 
   summarise() %>% 
@@ -195,7 +195,7 @@ quick_stats
 There's a mismatch between the number of players and their IDs. Are some names attributed to multiple IDs?
 
 ```{r}
-match_data %>% 
+global_data %>% 
   filter(!is.na(player_name), !is.na(player_id)) %>% 
   select(player_name, player_id) %>% 
   group_by(player_name) %>% 
@@ -204,26 +204,92 @@ match_data %>%
   summarise(id_count = n()) %>% 
   arrange(player_name)
 ```
+Finally, let's throw together a table of wins and losses for the year. I'm discarding all teams flagged as "unknown" for brevity.
 
 ```{r}
-team_wins <- match_data %>% 
+global_wins <- global_data %>% 
   filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
   group_by(team_name) %>% 
   summarise(wins = n()) %>% 
   arrange(desc(wins))
 
-team_losses <- match_data %>% 
+global_losses <- global_data %>% 
   filter(participant_id == 100 & winner == FALSE | participant_id == 200 & winner == FALSE) %>% 
   group_by(team_name) %>% 
   summarise(losses = n()) %>% 
   arrange(desc(losses))
 
-world_table <- team_wins %>% 
-  inner_join(team_losses) %>% 
+global_table <- global_wins %>% 
+  inner_join(global_losses) %>% 
   mutate(played = rowSums(across(c("wins", "losses")))) %>% 
   arrange(desc(wins))
 
-world_table %>% 
+global_table %>% 
   filter(team_name != "unknown team")
 ```
+
+# Segmenting the data
+
+There's a hell of a lot going on in this data, and it makes sense in my mind to segment it down in some logical fashion.
+
+There's a ton of different ways we could do it. Aggregating by team and league certainly seem most pertinent.
+
+To quote from Wikipedia -- 
+
+As of 2021, there are 12 professional leagues for League of Legends around the world. For the World Championship, the LEC, LPL, LCS and LCK are allocated three spots each, the PCS and VCS is allocated two spots, and the six emerging regions are allocated one spot each. One spot is awarded at the Mid-Season Invitational (MSI) to the region of the MSI champion, and one last spot is awarded to the highest ranked region that did not win that year's MSI.
+
+That means that for our purposes the LEC (Europe), LPL (China), LCS (North America) and LCK (South Korea) are going to be the first ports of call.
+
+```{r}
+lcs_data <- global_data %>% 
+  filter(league == "LCS")
+
+lec_data <- global_data %>% 
+  filter(league == "LEC")
+
+lpl_data <- global_data %>% 
+  filter(league == "LPL")
+
+lck_data <- global_data %>% 
+  filter(league == "LCK")
+```
+
+Table time!
+
+```{r}
+leagues = c("lcs", "lck", "lec", "lpl")
+league_losses <- list()
+league_wins <- list()
+
+for(i in 1:length(leagues)){
+  league = paste0(leagues[i],"_data")
+  league_wins[[i]] <- get(league) %>% 
+  filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
+  group_by(team_name) %>% 
+  summarise(wins = n()) %>% 
+  arrange(desc(wins))
+  
+  league_losses[[i]] <- get(league) %>% 
+  filter(participant_id == 100 & winner == FALSE | participant_id == 200 & winner == FALSE) %>% 
+  group_by(team_name) %>% 
+  summarise(losses = n()) %>% 
+  arrange(desc(losses))
+  
+  assign(paste0(leagues[i],"_table"), 
+         (as.data.frame(league_wins[i])) %>% 
+               inner_join(as.data.frame(league_losses[i])))
+}
+
+rm(league_wins)
+rm(league_losses)
+```
+
+```{r}
+
+
+global_table %>% 
+  filter(team_name != "unknown team")
+```
+
+
 
