@@ -241,29 +241,38 @@ As of 2021, there are 12 professional leagues for League of Legends around the w
 That means that for our purposes the LEC (Europe), LPL (China), LCS (North America) and LCK (South Korea) are going to be the first ports of call.
 
 ```{r}
-lcs_data <- global_data %>% 
-  filter(league == "LCS")
+leagues_list <- as.list(global_data %>% 
+  group_by(league) %>% 
+  summarise() %>% 
+  pull())
 
-lec_data <- global_data %>% 
-  filter(league == "LEC")
+for(i in 1:length(leagues_list)){
+  # Create string to reference a specific tibble
+  tibble_name = paste0(leagues_list[i],"_data")
+  
+  cur_league <- global_data %>% 
+    filter(league == leagues_list[[i]])
 
-lpl_data <- global_data %>% 
-  filter(league == "LPL")
-
-lck_data <- global_data %>% 
-  filter(league == "LCK")
+  assign(str_to_lower(paste0(tibble_name)), cur_league)
+}
 ```
 
 Table time!
 
 ```{r}
+# Vector with league names
 leagues = c("lcs", "lck", "lec", "lpl")
+
 league_losses <- list()
 league_wins <- list()
 
 for(i in 1:length(leagues)){
+  # Create string to reference a specific tibble
   league = paste0(leagues[i],"_data")
+  
+  # Use get() to call this object by name
   league_wins[[i]] <- get(league) %>% 
+    
   filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
   group_by(team_name) %>% 
   summarise(wins = n()) %>% 
@@ -275,6 +284,7 @@ for(i in 1:length(leagues)){
   summarise(losses = n()) %>% 
   arrange(desc(losses))
   
+  # Use assign() to create the name of our new object and fill it with data
   assign(paste0(leagues[i],"_table"), 
          (as.data.frame(league_wins[i])) %>% 
                inner_join(as.data.frame(league_losses[i])))
