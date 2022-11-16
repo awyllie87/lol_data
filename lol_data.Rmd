@@ -37,9 +37,10 @@ Every match has been assigned a `data completeness`, which refers in most cases 
 
 ## Libraries
 
-```{r}
+```{r libraries,warning=FALSE}
 library(tidyverse)
 library(janitor)
+library(snakecase)
 ```
 
 
@@ -47,7 +48,7 @@ library(janitor)
 
 First step is to read in the .csv
 
-```{r}
+```{r import_data}
 global_data_master <- read_csv("data/2022_match_data.csv")
 ```
 ## Clean-up
@@ -56,7 +57,7 @@ A whole bunch of these columns can be booleans. `result` is a binary check for w
 
 Going to rename `result` as `winner` for better clarity and snake_case all the column headers. Hopefully at some point I figure out a cleaner way to do this.
 
-```{r}
+```{r format_global_data}
 global_data <- global_data_master %>% 
     mutate(across(c(result, 
                     firstblood, 
@@ -158,7 +159,7 @@ global_data <- global_data_master %>%
 
 Let's have a look at some basic information about the data.
 
-```{r}
+```{r generate_global_stats}
 games <- global_data %>% 
   filter(!is.na(game_id)) %>% 
   group_by(game_id) %>% 
@@ -187,14 +188,16 @@ player_ids <- global_data %>%
   count() %>% 
   pull()
 
-quick_stats <- tibble(games, leagues, players, player_ids)
+global_stats <- tibble(games, leagues, players, player_ids)
 
-quick_stats
+rm(player_ids,players,leagues,games)
+
+global_stats
 ```
 
 There's a mismatch between the number of players and their IDs. Are some names attributed to multiple IDs?
 
-```{r}
+```{r find_duplicate_players}
 global_data %>% 
   filter(!is.na(player_name), !is.na(player_id)) %>% 
   select(player_name, player_id) %>% 
@@ -206,7 +209,7 @@ global_data %>%
 ```
 Finally, let's throw together a table of wins and losses for the year. I'm discarding all teams flagged as "unknown" for brevity.
 
-```{r}
+```{r generate_global_tibbles}
 global_wins <- global_data %>% 
   filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
   group_by(team_name) %>% 
@@ -220,12 +223,14 @@ global_losses <- global_data %>%
   arrange(desc(losses))
 
 global_table <- global_wins %>% 
-  inner_join(global_losses) %>% 
+  inner_join(global_losses, by = "team_name") %>% 
   mutate(played = rowSums(across(c("wins", "losses")))) %>% 
   arrange(desc(wins))
 
 global_table %>% 
   filter(team_name != "unknown team")
+
+rm(global_wins, global_losses)
 ```
 
 # Segmenting the data
@@ -240,7 +245,7 @@ As of 2021, there are 12 professional leagues for League of Legends around the w
 
 That means that for our purposes the LEC (Europe), LPL (China), LCS (North America) and LCK (South Korea) are going to be the first ports of call.
 
-```{r}
+```{r create_league_data}
 # Fetch the leagues and run 
 
 leagues_list <- as.list(global_data %>% 
@@ -256,7 +261,7 @@ for(i in 1:length(leagues_list)){
     filter(league == leagues_list[[i]])
 
   # Create the new tibble
-  assign(str_to_lower(paste0(tibble_name)), cur_league)
+  assign(to_snake_case(paste0(tibble_name)), cur_league)
 }
 
 # Environment cleanup
@@ -265,14 +270,14 @@ rm(tibble_name)
 rm(cur_league)
 ```
 
-```{r}
+```{r create_league_tables}
 # Create win/loss tables for every league
 league_losses <- list()
 league_wins <- list()
 
 for(i in 1:length(leagues_list)){
   # Create string to reference a specific tibble
-  league = str_to_lower(paste0(leagues_list[i],"_data"))
+  league = to_snake_case(paste0(leagues_list[i],"_data"))
   
   # Use get() to call this object by name
   league_wins[[i]] <- get(league) %>% 
@@ -289,19 +294,41 @@ for(i in 1:length(leagues_list)){
   arrange(desc(losses))
   
   # Use assign() to create the name of our new object and fill it with data
-  assign(str_to_lower(paste0(leagues_list[i],"_table")), 
+  assign(to_snake_case(paste0(leagues_list[i],"_table")), 
          (as.data.frame(league_wins[i])) %>% 
                inner_join(as.data.frame(league_losses[i]), by = "team_name") %>% 
-          mutate(games_played = sum(wins, losses)))
+          mutate(played = rowSums(across(c("wins", "losses")))))
 }
 
 # Environment cleanup
 
-rm(i)
-rm(league)
-rm(league_wins)
-rm(league_losses)
+rm(i, league, league_wins, league_losses)
 ```
+
+LEC
+
+```{r call_lec_table,echo=FALSE}
+lec_table
+```
+
+LPL
+
+```{r call_lpl_table,echo=FALSE}
+lpl_table
+```
+
+LCS
+
+```{r call_lcs_table,echo=FALSE}
+lcs_table
+```
+
+LCK
+
+```{r call_lck_table,echo=FALSE} 
+lck_table
+```
+
 
 
 
