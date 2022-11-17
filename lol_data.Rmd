@@ -1,6 +1,11 @@
 ---
 title: "League of Legends 2022 Match Data Analysis"
-output: html_notebook
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
 ---
 
 # Introduction
@@ -207,7 +212,6 @@ global_data %>%
   summarise(id_count = n()) %>% 
   arrange(player_name)
 ```
-Finally, let's throw together a table of wins and losses for the year. I'm discarding all teams flagged as "unknown" for brevity.
 
 ```{r generate_global_tibbles}
 global_wins <- global_data %>% 
@@ -225,110 +229,89 @@ global_losses <- global_data %>%
 global_table <- global_wins %>% 
   inner_join(global_losses, by = "team_name") %>% 
   mutate(played = rowSums(across(c("wins", "losses")))) %>% 
+  filter(team_name != "unknown team") %>% 
   arrange(desc(wins))
 
-global_table %>% 
-  filter(team_name != "unknown team")
+global_table
+```
 
+```{r global_cleanup, include=FALSE}
 rm(global_wins, global_losses)
 ```
 
-# Segmenting the data
+```{r functions}
 
-There's a hell of a lot going on in this data, and it makes sense in my mind to segment it down in some logical fashion.
-
-There's a ton of different ways we could do it. Aggregating by team and league certainly seem most pertinent.
-
-To quote from Wikipedia -- 
-
-As of 2021, there are 12 professional leagues for League of Legends around the world. For the World Championship, the LEC, LPL, LCS and LCK are allocated three spots each, the PCS and VCS is allocated two spots, and the six emerging regions are allocated one spot each. One spot is awarded at the Mid-Season Invitational (MSI) to the region of the MSI champion, and one last spot is awarded to the highest ranked region that did not win that year's MSI.
-
-That means that for our purposes the LEC (Europe), LPL (China), LCS (North America) and LCK (South Korea) are going to be the first ports of call.
-
-```{r create_league_data}
-# Fetch the leagues and run 
-
-leagues_list <- as.list(global_data %>% 
-  group_by(league) %>% 
-  summarise() %>% 
-  pull())
-
-for(i in 1:length(leagues_list)){
-  # Create string to define tibble
-  tibble_name = paste0(leagues_list[i],"_data")
+get_league <- function(x_league, match_data){
   
-  cur_league <- global_data %>% 
-    filter(league == leagues_list[[i]])
+  # Return tibble of specified league
 
-  # Create the new tibble
-  assign(to_snake_case(paste0(tibble_name)), cur_league)
+    match_data %>%
+      filter(league == str_to_upper((x_league)))
 }
 
-# Environment cleanup
+list_leagues <- function(match_data){
+  
+  # Return list of all leagues in match_data
+  
+  match_data %>% 
+    group_by(league) %>% 
+    summarise() %>% 
+    distinct() %>% 
+    pull()
+}
 
-rm(tibble_name)
-rm(cur_league)
-```
-
-```{r create_league_tables}
-# Create win/loss tables for every league
-league_losses <- list()
-league_wins <- list()
-
-for(i in 1:length(leagues_list)){
+get_league_table <- function(x_league){
+  
   # Create string to reference a specific tibble
-  league = to_snake_case(paste0(leagues_list[i],"_data"))
+  league_var = to_snake_case(paste0(x_league,"_data"))
+  league_wins <- list()
+  league_losses <- list()
   
   # Use get() to call this object by name
-  league_wins[[i]] <- get(league) %>% 
+  league_wins <- get(league_var) %>% 
     
-  filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
-  group_by(team_name) %>% 
-  summarise(wins = n()) %>% 
-  arrange(desc(wins))
+    filter(participant_id == 100 & winner == TRUE | participant_id == 200 & winner == TRUE) %>% 
+    group_by(team_name) %>% 
+    summarise(wins = n()) %>% 
+    arrange(desc(wins))
   
-  league_losses[[i]] <- get(league) %>% 
-  filter(participant_id == 100 & winner == FALSE | participant_id == 200 & winner == FALSE) %>% 
-  group_by(team_name) %>% 
-  summarise(losses = n()) %>% 
-  arrange(desc(losses))
+  league_losses <- get(league_var) %>% 
+    filter(participant_id == 100 & winner == FALSE | participant_id == 200 & winner == FALSE) %>% 
+    group_by(team_name) %>% 
+    summarise(losses = n()) %>% 
+    arrange(desc(losses))
   
-  # Use assign() to create the name of our new object and fill it with data
-  assign(to_snake_case(paste0(leagues_list[i],"_table")), 
-         (as.data.frame(league_wins[i])) %>% 
-               inner_join(as.data.frame(league_losses[i]), by = "team_name") %>% 
-          mutate(played = rowSums(across(c("wins", "losses")))))
+  return(as.data.frame(league_wins) %>% 
+    inner_join(as.data.frame(league_losses), by = "team_name") %>% 
+    mutate(played = rowSums(across(c("wins", "losses")))))
+}
+```
+
+```{r AUTOMATION fetch all leagues, eval=FALSE, include=FALSE}
+
+# Produce tibbles for all leagues in the format "[league]_data"
+
+leagues_vector <- list_leagues(global_data)
+
+for(i in 1:length(leagues_vector)){
+  
+   assign(to_snake_case(paste0(leagues_vector[i],"_data")), 
+          get_league(leagues_vector[i], global_data))
 }
 
-# Environment cleanup
-
-rm(i, league, league_wins, league_losses)
+rm(leagues_vector)
 ```
 
-LEC
+```{r AUTOMATION create all league tables, eval=FALSE, include=FALSE}
+# Create win/loss/played tibbles for every league in the format "[league]_table"
 
-```{r call_lec_table,echo=FALSE}
-lec_table
+leagues_vector <- list_leagues(global_data)
+
+for(i in 1:length(leagues_vector)){
+  
+   assign(to_snake_case(paste0(leagues_vector[i],"_table")), 
+          get_league_table(leagues_vector[i]))
+}
+
+rm(leagues_vector)
 ```
-
-LPL
-
-```{r call_lpl_table,echo=FALSE}
-lpl_table
-```
-
-LCS
-
-```{r call_lcs_table,echo=FALSE}
-lcs_table
-```
-
-LCK
-
-```{r call_lck_table,echo=FALSE} 
-lck_table
-```
-
-
-
-
