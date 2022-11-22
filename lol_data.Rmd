@@ -427,7 +427,7 @@ get_match_history <- function(x_team, match_data){
   select(date, league, split, playoffs, game, team_name, winner) %>% 
   mutate(date = as.Date(date)) %>% 
   group_by(date) %>%
-  count(team_name, league, split, playoffs, winner) %>% 
+  count(team_name, league, playoffs, split, winner) %>% 
   pivot_wider(names_from = winner, values_from = n) %>% 
   rename(wins = `TRUE`, losses = `FALSE`) %>% 
   mutate(wins = coalesce(wins, 0), losses = coalesce(losses, 0),
