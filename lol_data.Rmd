@@ -4,7 +4,7 @@ output:
   html_notebook:
     toc: true
     toc_float: true
-    number_sections: true
+    code_folding: hide
     df_print: paged
 ---
 
@@ -12,7 +12,14 @@ output:
 
 ## Preamble
 
-The plan here is to use this dataset, kindly provided by Tim Sevenhuysen over at Oracle's Elixir, to practice what I'm learning on the CodeClan Data Analysis bootcamp. Along with the git repository, it'll allow me to work on this through the weeks of the course and have a detailed history of adjustments via git, plus hopefully have a pretty interesting workbook to show off once I'm done. 
+The plan here is to use this dataset, kindly provided by Tim Sevenhuysen over at Oracle's Elixir, to practice what I'm learning on the CodeClan Data Analysis bootcamp. Along with the git repository, it'll allow me to work on this through the weeks of the course and have a detailed history of adjustments via git, plus hopefully have a pretty interesting workbook to show off once I'm done.
+
+### Things I've learned
+
+- Basics of `dplyr`
+- Creating functions
+- Some RMarkdown
+- Looping functions to do some automated table creation
 
 ## Data
 
@@ -42,7 +49,13 @@ Every match has been assigned a `data completeness`, which refers in most cases 
 
 ## Libraries
 
-```{r libraries,warning=FALSE}
+Currently using 
+
+- `tidyverse`
+- `janitor`
+- `snakecase`
+
+```{r libraries,warning=FALSE, message=false}
 library(tidyverse)
 library(janitor)
 library(snakecase)
@@ -56,6 +69,7 @@ First step is to read in the .csv
 ```{r import_data}
 global_data_master <- read_csv("data/2022_match_data.csv")
 ```
+
 ## Clean-up
 
 A whole bunch of these columns can be booleans. `result` is a binary check for win/loss, all the first blood columns are to do with just identifying involvement, as is `firstdragon`, `firstherald`, `firstbaron`, and the three metrics surrounding first tower. 
@@ -239,6 +253,28 @@ global_table
 rm(global_wins, global_losses)
 ```
 
+## Functions
+
+Next I'll make a series of functions to do some legwork for me.
+
+NOTE: In a normal environment I'd define these way up top, but this file is documenting my learning process!
+
+`get_league()` is really basic and let's me create a table containing just a specific league
+
+`list_league()` looks for the unique league names and sticks them in a list
+
+`get_league_table()` produces a Wins/Losses/Played league table for a specified league
+
+`get_stats()` produces a table with some quick summary stats for a given league
+
+`get_roster()` produces a table containing the roster for the specified team, including position and games played
+
+`get_matches()` produces a vector containing the `game_id` of every game the specified team has played.
+
+`get_game_history()` produces a game history for the specified team.
+
+`get_match_history()` produces a match history for the specified team. NOTE -- "match history" is an aggregation of every individual "game" into set series so that, for example, the outcome of a Best of 5 is evaluated rather than the individual games in the series.
+
 ```{r functions}
 
 get_league <- function(x_league, match_data){
@@ -285,6 +321,118 @@ get_league_table <- function(x_league){
     inner_join(as.data.frame(league_losses), by = "team_name") %>% 
     mutate(played = rowSums(across(c("wins", "losses")))))
 }
+
+get_stats <- function(x_league){
+  
+  # Create string to reference a specific tibble
+  league_var = to_snake_case(paste0(x_league,"_data"))
+  
+  league_stats <- get(league_var)
+  
+  games <- league_stats %>% 
+    filter(!is.na(game_id)) %>% 
+    group_by(game_id) %>% 
+    summarise() %>% 
+    count() %>% 
+    pull()
+  
+  teams <- league_stats %>% 
+    filter(!is.na(team_name)) %>% 
+    group_by(team_name) %>% 
+    summarise() %>% 
+    count() %>% 
+    pull()
+  
+  players <- league_stats %>% 
+    filter(!is.na(player_name)) %>% 
+    group_by(player_name) %>% 
+    summarise() %>% 
+    count() %>% 
+    pull()
+  
+  player_ids <- league_stats %>% 
+    filter(!is.na(player_id)) %>% 
+    group_by(player_id) %>% 
+    summarise() %>% 
+    count() %>% 
+    pull()
+  
+  return(tibble(games, teams, players, player_ids))
+}
+
+get_roster <- function(x_team, match_data){
+  
+  match_data %>% 
+  filter(!is.na(player_name), team_name == x_team) %>% 
+  select(position, player_name, game_id) %>% 
+  group_by(player_name) %>% 
+  summarise(position, games = n_distinct(game_id)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  select(position, player_name, games) %>% 
+  arrange(factor(position, levels = c("top", "mid", "bot", "sup", "jng")), player_name)
+}
+
+get_matches <- function(x_team, match_data){
+  
+  match_data %>% 
+  select(game_id, team_name) %>% 
+  group_by(game_id) %>%
+  filter(team_name == x_team) %>% 
+  select(game_id) %>% 
+  distinct() %>% 
+  pull()
+}
+
+get_game_history <- function(x_team, match_data){
+  
+  # I could use get_matches() here...
+  
+  team_games <- match_data %>% 
+  select(game_id, team_name) %>% 
+  group_by(game_id) %>%
+  filter(team_name == x_team) %>% 
+  select(game_id) %>% 
+  distinct() %>% 
+  pull()
+  
+  match_data %>% 
+  select(game_id, date, league, split, playoffs, game, team_name, winner) %>% 
+  filter(game_id %in% team_games, team_name != x_team) %>%
+  distinct() %>% 
+  mutate(winner = !winner) %>% 
+  arrange(date, game)
+}
+
+get_match_history <- function(x_team, match_data){
+
+  # I could use get_matches() here...
+  team_games <- match_data %>% 
+  select(game_id, team_name) %>% 
+  group_by(game_id) %>%
+  filter(team_name == x_team) %>% 
+  select(game_id) %>% 
+  distinct() %>% 
+  pull()
+  
+  # I could use get_game_history() here...
+  game_history <- match_data %>% 
+  select(game_id, date, league, split, playoffs, game, team_name, winner) %>% 
+  filter(game_id %in% team_games, team_name != x_team) %>%
+  distinct() %>% 
+  mutate(winner = !winner) %>% 
+  arrange(date, game)
+  
+  game_history %>% 
+  select(date, league, split, playoffs, game, team_name, winner) %>% 
+  mutate(date = as.Date(date)) %>% 
+  group_by(date) %>%
+  count(team_name, league, split, playoffs, winner) %>% 
+  pivot_wider(names_from = winner, values_from = n) %>% 
+  rename(wins = `TRUE`, losses = `FALSE`) %>% 
+  mutate(wins = coalesce(wins, 0), losses = coalesce(losses, 0),
+         winner = if_else(wins > losses, TRUE, FALSE))
+}
 ```
 
 ```{r AUTOMATION fetch all leagues, eval=FALSE, include=FALSE}
@@ -315,3 +463,108 @@ for(i in 1:length(leagues_vector)){
 
 rm(leagues_vector)
 ```
+
+# Analysis of European (LEC) data
+
+## Basics {.tabset}
+
+Let's have some fun with the European data. The league we want to look at is the LEC.
+
+```{r create Europe-only (LEC) data}
+lec_data <- get_league("lec", global_data)
+lec_table <- get_league_table("lec")
+```
+
+### League Table
+
+```{r LEC League Table}
+lec_table
+```
+
+### Summary
+
+```{r LEC stats}
+get_stats("lec")
+```
+
+
+## Team Compositions {.tabset}
+
+Roster Sizes
+
+```{r team sizes, message=FALSE}
+lec_data %>% 
+  select(team_name, player_name) %>% 
+  filter(!is.na(team_name), !is.na(player_name)) %>% 
+  group_by(team_name) %>% 
+  summarise(no_players = n_distinct(player_name))
+```
+
+### Astralis
+
+```{r Astralis roster, warning=FALSE, message=FALSE}
+get_roster("Astralis", lec_data)
+```
+
+### Excel Esports
+
+```{r Excel Esports roster, warning=FALSE, message=FALSE}
+get_roster("Excel Esports", lec_data)
+```
+
+### Fnatic
+
+```{r Fnatic roster, warning=FALSE, message=FALSE}
+get_roster("Fnatic", lec_data)
+```
+
+### G2 Esports
+
+```{r G2 Esports roster, warning=FALSE, message=FALSE}
+get_roster("G2 Esports", lec_data)
+```
+
+### MAD Lions
+
+```{r MAD Lions roster, warning=FALSE, message=FALSE}
+get_roster("MAD Lions", lec_data)
+```
+
+### Misfits Gaming
+
+```{r Misfits Gaming roster, warning=FALSE, message=FALSE}
+get_roster("Misfits Gaming", lec_data)
+```
+
+### Rogue
+
+```{r Rogue roster, warning=FALSE, message=FALSE}
+get_roster("Rogue", lec_data)
+```
+
+### SK Gaming
+
+```{r SK Gaming roster, warning=FALSE, message=FALSE}
+get_roster("SK Gaming", lec_data)
+```
+
+### Team BDS
+
+```{r Team BDS roster, warning=FALSE, message=FALSE}
+get_roster("Team BDS", lec_data)
+```
+
+### Team Vitality
+
+```{r Team Vitality roster, warning=FALSE, message=FALSE}
+get_roster("Team Vitality", lec_data)
+```
+
+## Match History
+
+```{r}
+get_match_history("Rogue", lec_data)
+```
+
+
+
