@@ -9,7 +9,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Headlines", tabName = "headlines", icon = icon("dashboard")),
-      menuItem("Team Data", tabName = "team_data", icon = icon("th")),
+      menuItem("Players", tabName = "player_data"),
+      menuItem("Teams", tabName = "team_data", icon = icon("th")),
       menuItem("Player Analysis", tabName = "player_analysis", icon = icon("th"))
     )
   ),
@@ -40,6 +41,34 @@ ui <- dashboardPage(
                        valueBoxOutput("dash_most_picked"),
                        valueBoxOutput("dash_most_banned"))
       ),
+      
+      ## Player Data ----
+      
+      tabItem(tabName = "player_data",
+              
+              fluidRow(
+                column(width = 2,
+                       selectInput(
+                         inputId = "pd_player_select",
+                         label = tags$b("Select Player"),
+                         choices = sort(unique(lec_data$player_name)))
+                ),
+              
+                column(width = 2,
+                       selectInput(
+                         inputId = "pd_team_select",
+                         label = tags$b("Filter by team"),
+                         choices = sort(unique(lec_data$team_name)))
+                )
+              ),
+              
+              box(width = 16,
+                  fluidRow(valueBoxOutput("pd_total_kills"),
+                           valueBoxOutput("pd_kills_per_game"),
+                           valueBoxOutput("pd_kill_participation")))
+      ),
+                
+                
       
       ## Team Data ----
       

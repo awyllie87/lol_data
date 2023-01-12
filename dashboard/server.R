@@ -26,6 +26,52 @@ server <- function(input, output) {
   output$dash_most_banned <- renderValueBox({
     valueBox(paste(most_banned, collapse = " & "), "Most Banned", color = "black")})
   
+  # Player Data ----
+  
+  ## Reactives ----
+  
+  pd_filter_player <- reactive(
+    
+    lec_data_players %>% 
+      filter(player_name == input$pd_player_select)
+  )
+  
+  ## Outputs ----
+  
+  output$pd_total_kills <- renderValueBox({
+    
+    total_kills <- pd_filter_player() %>% 
+      group_by(player_name) %>% 
+      summarise(total_kills = sum(kills)) %>% 
+      select(total_kills) %>% 
+      pull()
+    
+    valueBox(total_kills, "Total Kills")
+  })
+  
+  output$pd_kills_per_game <- renderValueBox({
+    
+    kills_per_game <- pd_filter_player() %>% 
+      group_by(player_name) %>% 
+      summarise(kpg = round((sum(kills) / n()), 2)) %>% 
+      select(kpg) %>% 
+      pull()
+    
+    valueBox(kills_per_game, "Kills per Game")
+  })
+  
+  output$pd_kill_participation <- renderValueBox({
+
+    kpt <- pd_filter_player() %>% 
+      group_by(player_name, game_id) %>% 
+      summarise(kpt = ((kills + assists) / team_kills) * 100) %>% 
+      summarise(kpt = round(mean(kpt)), 2) %>% 
+      select(kpt)
+    
+    valueBox(paste0(kpt,"%"), "Kill Participation")
+  })
+  
+  
   # Team Data ----
   
   output$roster <- renderDataTable(
