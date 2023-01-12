@@ -1,6 +1,6 @@
 server <- function(input, output) {
   
-  ### Headline Dashboard
+  # Headlines ----
   
   output$dash_total_players <- renderValueBox({
     valueBox(no_players, "Players", color = "blue")})
@@ -26,7 +26,7 @@ server <- function(input, output) {
   output$dash_most_banned <- renderValueBox({
     valueBox(paste(most_banned, collapse = " & "), "Most Banned", color = "black")})
   
-  ### Team Data
+  # Team Data ----
   
   output$roster <- renderDataTable(
     (get_roster(input$team_select)),
@@ -73,7 +73,7 @@ server <- function(input, output) {
     )
   )
   
-  ### Player Analysis
+  # Player Analysis ----
   
   output$player_graph <- renderPlotly({
     

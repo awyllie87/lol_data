@@ -1,6 +1,10 @@
 ui <- dashboardPage(
   
+  # Header ----
+  
   dashboardHeader(),
+  
+  # Sidebar ----
   
   dashboardSidebar(
     sidebarMenu(
@@ -10,8 +14,14 @@ ui <- dashboardPage(
     )
   ),
   
+  # Body ----
+  
   dashboardBody(
+    
     tabItems(
+      
+      ## Headlines ----
+      
       tabItem(tabName = "headlines",
               
               ### Produce value boxes with a breakdown of basic highlights of the whole dataset.
@@ -30,6 +40,8 @@ ui <- dashboardPage(
                        valueBoxOutput("dash_most_picked"),
                        valueBoxOutput("dash_most_banned"))
       ),
+      
+      ## Team Data ----
       
       tabItem(tabName = "team_data",
               
@@ -87,6 +99,9 @@ ui <- dashboardPage(
                                 dataTableOutput("match_history")))
               )
       ),
+      
+      ## Player Analysis
+      
       tabItem(tabName = "player_analysis",
               
               ### First run at dynamic plotting.

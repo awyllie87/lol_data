@@ -1,9 +1,12 @@
+# Libraries ----
+
 library(shiny)
 library(shinydashboard)
 library(tidyverse)
 library(bslib)
 library(plotly)
 
+# Data ----
 # Establish data tables
 
 lec_data <- read_csv(here::here("data/lec_data.csv")) %>% 
@@ -11,7 +14,8 @@ lec_data <- read_csv(here::here("data/lec_data.csv")) %>%
          date = as.Date(date),
          # kda needs to account for deaths being 0 to prevent infinity.
          # sadly prevents deathless games from being special... perhaps mutate in a column to flag them?
-         kda = ((kills + assists) / if_else(deaths == 0, 1, deaths))) %>% 
+         kda = ((kills + assists) / if_else(deaths == 0, 1, deaths)),
+         flawless = (deaths == 0)) %>% 
   relocate(kda, .after = assists) %>% 
   mutate(kda = round(kda, 2))
 
@@ -24,7 +28,7 @@ lec_data_teams <- lec_data %>%
 lec_data_players <- lec_data %>% 
   filter(!is.na(player_name))
 
-### Functions
+# Functions ----
 
 get_roster <- function(x_team){
   
@@ -75,7 +79,8 @@ get_match_history <- function(x_team, match_data){
            winner = if_else(wins > losses, TRUE, FALSE))
 }
 
-### Variables
+# Variables ----
+# Used in Headline containers
 
 no_players <- length(unique(na.omit(lec_data$player_name)))
 
