@@ -3,13 +3,11 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-
-
 ```{r}
 library(tidyverse)
 library(lubridate)
 
-lec_data <- read_csv("data/lec_data.csv") %>% 
+lec_data <- read_csv(here::here("data/lec_data.csv")) %>% 
   mutate(game_id = as.factor(game_id))
 
 lec_data_teams <- lec_data %>% 

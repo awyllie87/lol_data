@@ -5,11 +5,12 @@ library(shinydashboard)
 library(tidyverse)
 library(bslib)
 library(plotly)
+library(here)
 
 # Data ----
 # Establish data tables
 
-lec_data <- read_csv(here::here("data/lec_data.csv")) %>% 
+lec_data <- read_csv(here("data/lec_data.csv")) %>% 
   mutate(game_id = as.factor(game_id),
          date = as.Date(date),
          # kda needs to account for deaths being 0 to prevent infinity.
