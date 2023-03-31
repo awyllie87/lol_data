@@ -141,4 +141,29 @@ lec_data_teams %>%
   geom_line(aes(x = game_id, y = kda, group = team_name, colour = team_name))
 ```
 
+```{r}
+games <- lec_data_players %>%
+  filter(player_name == "Dajor") %>% 
+  summarise(games_played = nrow(.)) %>% 
+  pull()
+
+wins <- lec_data_players %>% 
+  filter(player_name == "Dajor") %>% 
+  summarise(wins = sum(winner)) %>% 
+  pull()
+
+stats <- lec_data_players %>% 
+  filter(player_name == "Dajor") %>% 
+  summarise(wins = sum(winner),
+            losses = nrow(.) - sum(winner),
+            games_played = nrow(.),
+            winrate = round((sum(winner) / nrow(.) * 100), 2))
+
+as.list(stats)
+
+lec_data_players %>%
+  filter(player_name == "Finn" & team_deaths > 0) %>% 
+  select(deaths, team_deaths) %>% 
+        summarise(dpt = round(mean((deaths / team_deaths) * 100), 2))
+```
 

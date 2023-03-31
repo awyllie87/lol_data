@@ -4,5 +4,4 @@
 .Ruserdata
 .html
 .Rproj
-.nb.html
-lol_data.nb.html
+**/*.nb.html

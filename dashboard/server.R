@@ -1,4 +1,4 @@
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   # Headlines ----
   
@@ -30,47 +30,128 @@ server <- function(input, output) {
   
   ## Reactives ----
   
-  pd_filter_player <- reactive(
+  observe({
+    
+    updateSelectInput(session, "pd_player_select",
+                      choices = pd_player_select())
+    
+  })
+  
+  pd_filter_player <- reactive({
     
     lec_data_players %>% 
       filter(player_name == input$pd_player_select)
-  )
+    
+  })
+  
+  pd_player_select <- reactive({
+    
+    player <- lec_data_players %>%
+      filter(team_name == input$pd_team_select) %>% 
+      select(player_name) %>% 
+      distinct() %>% 
+      arrange(player_name) %>%
+      pull()
+    
+    return(as.list(player))
+    
+  })
+  
+  pd_player_stats <- reactive({
+    
+    stats <- pd_filter_player() %>% 
+      summarise(wins = sum(winner),
+                losses = nrow(.) - sum(winner),
+                games_played = nrow(.),
+                winrate = round((sum(winner) / nrow(.) * 100), 2),
+                kills = sum(kills),
+                kda = mean(kda),
+                kpg = round((sum(kills) / nrow(.)), 2),
+                ds = round((mean(damage_share) * 100), 2),
+                gs = round((mean(earned_gold_share) * 100), 2))
+    
+    stats$kpt <- pd_filter_player() %>% 
+      summarise(kpt = round(mean(((kills + assists) / team_kills) * 100), 2))
+    
+    stats$dpt <- pd_filter_player() %>% 
+      # need to filter out games with no team deaths to avoid division by 0
+      filter(team_deaths > 0) %>% 
+      summarise(dpt = round(mean((deaths / team_deaths) * 100), 2))
+    
+    stats$role <- pd_filter_player() %>% 
+      select(position) %>% 
+      distinct()
+                                  
+    return(as.list(stats))
+    
+  })
   
   ## Outputs ----
   
-  output$pd_total_kills <- renderValueBox({
+  output$pd_player_select <- renderUI({
+    selectInput("pd_player_select",
+                label = tags$b("Select Player"),
+                choices = pd_player_select())
+  })
+  
+  output$pd_role <- renderValueBox({
     
-    total_kills <- pd_filter_player() %>% 
-      group_by(player_name) %>% 
-      summarise(total_kills = sum(kills)) %>% 
-      select(total_kills) %>% 
-      pull()
+    valueBox(paste(pd_player_stats()$role, collapse = " & "), 
+             "Position", color = "navy")
+  })
+  
+
+  
+  output$pd_games_played <- renderValueBox({
     
-    valueBox(total_kills, "Total Kills")
+    valueBox(pd_player_stats()$games_played, 
+             "Games Played", color = "blue")
+    
+  })
+  
+  output$pd_win_pct <- renderValueBox({
+    
+    valueBox(paste0(pd_player_stats()$winrate,"%"), 
+             "Win Rate", color = "olive")
+    
   })
   
   output$pd_kills_per_game <- renderValueBox({
     
-    kills_per_game <- pd_filter_player() %>% 
-      group_by(player_name) %>% 
-      summarise(kpg = round((sum(kills) / n()), 2)) %>% 
-      select(kpg) %>% 
-      pull()
+    valueBox(pd_player_stats()$kpg, 
+             "Kills per Game", color = "purple")
+  })
+  
+  output$pd_avg_kda <- renderValueBox({
     
-    valueBox(kills_per_game, "Kills per Game")
+    valueBox(round(pd_player_stats()$kda, 2), 
+             "Average KDA", color = "maroon")
+    
   })
   
   output$pd_kill_participation <- renderValueBox({
-
-    kpt <- pd_filter_player() %>% 
-      group_by(player_name, game_id) %>% 
-      summarise(kpt = ((kills + assists) / team_kills) * 100) %>% 
-      summarise(kpt = round(mean(kpt)), 2) %>% 
-      select(kpt)
     
-    valueBox(paste0(kpt,"%"), "Kill Participation")
+    valueBox(paste0(pd_player_stats()$kpt,"%"), 
+             "Kill Participation", color = "red")
   })
   
+  output$pd_death_contrib <- renderValueBox({
+    
+    valueBox(paste0(pd_player_stats()$dpt, "%"), 
+             "Death Contribution", color = "black")
+  })
+  
+  output$pd_dmg_share <- renderValueBox({
+    
+    valueBox(paste0(pd_player_stats()$ds, "%"), 
+             "Share of Champion Damage", color = "fuchsia")
+  })
+  
+  output$pd_gold_share <- renderValueBox({
+    
+    valueBox(paste0(pd_player_stats()$gs, "%"), 
+             "Average Gold Contribution", color = "orange")
+  })
   
   # Team Data ----
   

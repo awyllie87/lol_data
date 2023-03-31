@@ -50,7 +50,7 @@ ui <- dashboardPage(
                 column(width = 2,
                        selectInput(
                          inputId = "pd_player_select",
-                         label = tags$b("Select Player"),
+                         label = tags$b("Filter by player"),
                          choices = sort(unique(lec_data$player_name)))
                 ),
               
@@ -63,12 +63,21 @@ ui <- dashboardPage(
               ),
               
               box(width = 16,
-                  fluidRow(valueBoxOutput("pd_total_kills"),
-                           valueBoxOutput("pd_kills_per_game"),
-                           valueBoxOutput("pd_kill_participation")))
+                  fluidRow(valueBoxOutput("pd_role"),
+                           valueBoxOutput("pd_games_played"),
+                           valueBoxOutput("pd_win_pct")),
+                  
+                  fluidRow(valueBoxOutput("pd_kills_per_game"),
+                           valueBoxOutput("pd_avg_kda"),
+                           valueBoxOutput("pd_kill_participation")),
+                  
+                  fluidRow(valueBoxOutput("pd_death_contrib"),
+                           valueBoxOutput("pd_dmg_share"),
+                           valueBoxOutput("pd_gold_share"))
+                  
+                  )
+              
       ),
-                
-                
       
       ## Team Data ----
       

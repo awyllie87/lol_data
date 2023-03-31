@@ -26,7 +26,15 @@ lec_data_teams <- lec_data %>%
   filter(is.na(player_name))
 
 lec_data_players <- lec_data %>% 
-  filter(!is.na(player_name))
+  filter(!is.na(player_name)) %>% 
+  mutate(position = case_when(
+    position == "top" ~ "Top",
+    position == "mid" ~ "Middle",
+    position == "bot" ~ "ADC",
+    position == "sup" ~ "Support",
+    position == "jng" ~ "Jungle",
+    TRUE ~ position
+  ))
 
 # Functions ----
 
