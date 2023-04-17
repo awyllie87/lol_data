@@ -37,6 +37,16 @@ lec_data_players <- lec_data %>%
     TRUE ~ position
   ))
 
+# Table additions
+
+lec_data_teams <- lec_data_teams %>% 
+  group_by(split, team_name) %>% 
+  filter(playoffs == FALSE) %>% 
+  arrange(date) %>% 
+  mutate(split_wins = cumsum(winner),
+         split_losses = n() - cumsum(winner), .after = split) %>% 
+  ungroup()
+
 # Functions ----
 
 get_roster <- function(x_team){
@@ -128,3 +138,5 @@ top5_bans <- lec_data %>%
 most_banned <- top5_bans %>% 
   slice_max(times_banned) %>% 
   pull(var = champion)
+
+url <- "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/1.png"

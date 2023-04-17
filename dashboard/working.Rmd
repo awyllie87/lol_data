@@ -6,6 +6,8 @@ output: html_notebook
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(httr)
+library(jsonlite)
 
 lec_data <- read_csv(here::here("data/lec_data.csv")) %>% 
   mutate(game_id = as.factor(game_id))
@@ -132,7 +134,6 @@ lec_data_players %>%
   select(player_name, date)
 ```
 
-
 ```{r}
 lec_data_teams %>% 
   ggplot() +
@@ -163,5 +164,54 @@ lec_data_players %>%
   filter(player_name == "Finn" & team_deaths > 0) %>% 
   select(deaths, team_deaths) %>% 
         summarise(dpt = round(mean((deaths / team_deaths) * 100), 2))
+
+tester <- lec_data_players %>%
+  filter(player_name == "Finn") %>% 
+  arrange(desc(date), desc(game)) %>% 
+  slice_max(date, n = 10) %>% 
+  select(date, champion, winner, kills, deaths, assists, kda, total_cs, game_length, side)
+
+tester
+
+slice(tester, 3)
+```
+
+```{r}
+res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
+
+url <- fromJSON(rawToChar(res$content)) %>% 
+  mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^/lol-game-data/assets", "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default")) %>% 
+  filter(name == "Annie") %>% 
+  select(squarePortraitPath) %>% 
+  pull()
+
+url
+```
+```{r}
+lec_data_teams %>% 
+  group_by(split, team_name) %>% 
+  filter(playoffs == FALSE) %>% 
+  arrange(date) %>% 
+  mutate(split_wins = cumsum(winner),
+         split_losses = n() - cumsum(winner), .after = split) %>% 
+  select(split, team_name, wins, losses) %>% 
+  filter(wins == max(wins), split == "Spring") %>% 
+  arrange(desc(wins)) %>% 
+  distinct()
+```
+
+```{r}
+lec_data_teams %>% 
+  group_by(split, team_name) %>% 
+  filter(playoffs == FALSE) %>% 
+  arrange(date) %>% 
+  mutate(split_wins = cumsum(winner)) %>% 
+  ungroup() %>% 
+       group_by(team_name) %>% 
+       filter((split == "Spring") & (playoffs == FALSE)) %>%  
+      filter(split_wins == max(split_wins)) %>% 
+      arrange(desc(split_wins)) %>% 
+       select(team_name, split_wins, split_losses) %>% 
+      distinct()
 ```
 

@@ -9,6 +9,7 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Headlines", tabName = "headlines", icon = icon("dashboard")),
+      menuItem("Splits", tabName = "splits"),
       menuItem("Players", tabName = "player_data"),
       menuItem("Teams", tabName = "team_data", icon = icon("th")),
       menuItem("Player Analysis", tabName = "player_analysis", icon = icon("th"))
@@ -42,6 +43,22 @@ ui <- dashboardPage(
                        valueBoxOutput("dash_most_banned"))
       ),
       
+      ## Splits ----
+      
+      tabItem(tabName = "splits",
+              
+              fluidRow(
+                tabBox(id = "split_tabs",
+                       width = 12,
+                       tabPanel("Spring",
+                                dataTableOutput("split_spring")),
+                       
+                       tabPanel("Summer",
+                                dataTableOutput("split_summer")))
+              )
+              
+      ),
+      
       ## Player Data ----
       
       tabItem(tabName = "player_data",
@@ -53,7 +70,7 @@ ui <- dashboardPage(
                          label = tags$b("Filter by player"),
                          choices = sort(unique(lec_data$player_name)))
                 ),
-              
+                
                 column(width = 2,
                        selectInput(
                          inputId = "pd_team_select",
@@ -62,20 +79,26 @@ ui <- dashboardPage(
                 )
               ),
               
-              box(width = 16,
-                  fluidRow(valueBoxOutput("pd_role"),
-                           valueBoxOutput("pd_games_played"),
-                           valueBoxOutput("pd_win_pct")),
-                  
-                  fluidRow(valueBoxOutput("pd_kills_per_game"),
-                           valueBoxOutput("pd_avg_kda"),
-                           valueBoxOutput("pd_kill_participation")),
-                  
-                  fluidRow(valueBoxOutput("pd_death_contrib"),
-                           valueBoxOutput("pd_dmg_share"),
-                           valueBoxOutput("pd_gold_share"))
-                  
-                  )
+              tabBox(id = "player_tabs",
+                     width = 16,
+                     tabPanel("Summary",
+                              fluidRow(valueBoxOutput("pd_role"),
+                                       valueBoxOutput("pd_games_played"),
+                                       valueBoxOutput("pd_win_pct")),
+                              
+                              fluidRow(valueBoxOutput("pd_kills_per_game"),
+                                       valueBoxOutput("pd_avg_kda"),
+                                       valueBoxOutput("pd_kill_participation")),
+                              
+                              fluidRow(valueBoxOutput("pd_death_contrib"),
+                                       valueBoxOutput("pd_dmg_share"),
+                                       valueBoxOutput("pd_gold_share"))
+                     ),
+                     
+                     tabPanel("Last 10 Games",
+                              fluidRow(uiOutput("pd_last_game"))
+                     )
+              )
               
       ),
       
