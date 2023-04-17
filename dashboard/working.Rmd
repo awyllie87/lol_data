@@ -23,7 +23,7 @@ lec_data_players <- lec_data %>%
   mutate(kda = ((kills + assists) / if_else(deaths == 0, 1, deaths))) %>% 
   relocate(kda, .after = assists) %>% 
   mutate(kda = round(kda, 2))
-  
+
 ```
 
 ```{r}
@@ -99,7 +99,7 @@ top5_picks <- lec_data %>%
 top5_bans <- 
   lec_data %>% 
   filter(is.na(player_name)) %>% 
-    select(ban_1:ban_5) %>%
+  select(ban_1:ban_5) %>%
   pivot_longer(1:5, names_to = "ban_no", values_to = "champion") %>% 
   group_by(champion) %>% 
   summarise(times_banned = n()) %>% 
@@ -109,7 +109,7 @@ top5_bans <-
 ```{r}
 lec_data %>% 
   filter(is.na(player_name)) %>% 
-    select(ban_1:ban_5) %>%
+  select(ban_1:ban_5) %>%
   pivot_longer(1:5, names_to = "ban_no", values_to = "champ") %>% 
   group_by(champ) %>% 
   summarise(times_banned = n()) %>% 
@@ -163,7 +163,7 @@ as.list(stats)
 lec_data_players %>%
   filter(player_name == "Finn" & team_deaths > 0) %>% 
   select(deaths, team_deaths) %>% 
-        summarise(dpt = round(mean((deaths / team_deaths) * 100), 2))
+  summarise(dpt = round(mean((deaths / team_deaths) * 100), 2))
 
 tester <- lec_data_players %>%
   filter(player_name == "Finn") %>% 
@@ -172,42 +172,56 @@ tester <- lec_data_players %>%
   select(date, champion, winner, kills, deaths, assists, kda, total_cs, game_length, side)
 
 picks <- lec_data_players %>% 
-      filter(player_name == "Dajor") %>% 
-      group_by(champion) %>% 
-      summarise(picked = n(),
-                wins = sum(winner),
-                losses = n() - sum(winner),
-                winrate = round((sum(winner) / n()) * 100, 2),
-                kills = sum(kills),
-                kda = mean(kda),
-                kpg = round((sum(kills) / nrow(.)), 2),
-                dmg_pct = round((mean(damage_share) * 100), 2),
-                g_pct = round((mean(earned_gold_share) * 100), 2)) %>% 
-      arrange(desc(picked), desc(winrate))
-    
+  filter(player_name == "Dajor") %>% 
+  group_by(champion) %>% 
+  summarise(picked = n(),
+            wins = sum(winner),
+            losses = n() - sum(winner),
+            winrate = round((sum(winner) / n()) * 100, 2),
+            kills = sum(kills),
+            kda = mean(kda),
+            kpg = round((sum(kills) / nrow(.)), 2),
+            dmg_pct = round((mean(damage_share) * 100), 2),
+            g_pct = round((mean(earned_gold_share) * 100), 2)) %>% 
+  arrange(desc(picked), desc(winrate))
+
 kpt <- lec_data_players %>% 
-      filter(player_name == "Dajor") %>%  
-      group_by(champion) %>% 
-      summarise(kpt = round(mean(((kills + assists) / team_kills) * 100), 2))
+  filter(player_name == "Dajor") %>%  
+  group_by(champion) %>% 
+  summarise(kpt = round(mean(((kills + assists) / team_kills) * 100), 2))
 
 picks %>% 
   inner_join(kpt, by = "champion")
-    
-    picks <- picks %>% 
-      inner_join(kpt, by = champion)
+
+picks <- picks %>% 
+  inner_join(kpt, by = champion)
 ```
 
 ```{r}
+names <- lec_data_players %>% 
+  filter(player_name == "Dajor") %>% 
+  arrange(desc(date), desc(game)) %>% 
+  slice_max(date, n = 10) %>% 
+  select(champion) %>% 
+  pull()
+
 res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
 
 url <- fromJSON(rawToChar(res$content)) %>% 
-  mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^/lol-game-data/assets", "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default")) %>% 
-  filter(name == "Annie") %>% 
-  select(squarePortraitPath) %>% 
-  pull()
+  mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^/lol-game-data/assets", "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default")) %>%
+  mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^", "<img src='"),
+         squarePortraitPath = str_replace_all(squarePortraitPath, "$", "' height ='200'></img>")) %>% 
+  filter(name %in% names) %>% 
+  select(name, squarePortraitPath)
 
-url
+lec_data_players %>% 
+  filter(player_name == "Dajor") %>% 
+  arrange(desc(date), desc(game)) %>% 
+  slice_max(date, n = 10) %>% 
+  select(champion) %>% 
+  inner_join(url, by = c("champion" = "name"))
 ```
+
 ```{r}
 lec_data_teams %>% 
   group_by(split, team_name) %>% 
@@ -228,11 +242,11 @@ lec_data_teams %>%
   arrange(date) %>% 
   mutate(split_wins = cumsum(winner)) %>% 
   ungroup() %>% 
-       group_by(team_name) %>% 
-       filter((split == "Spring") & (playoffs == FALSE)) %>%  
-      filter(split_wins == max(split_wins)) %>% 
-      arrange(desc(split_wins)) %>% 
-       select(team_name, split_wins, split_losses) %>% 
-      distinct()
+  group_by(team_name) %>% 
+  filter((split == "Spring") & (playoffs == FALSE)) %>%  
+  filter(split_wins == max(split_wins)) %>% 
+  arrange(desc(split_wins)) %>% 
+  select(team_name, split_wins, split_losses) %>% 
+  distinct()
 ```
 

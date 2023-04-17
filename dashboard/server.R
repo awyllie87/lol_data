@@ -117,10 +117,26 @@ server <- function(input, output, session) {
   
   pd_last_ten <- reactive({
     
+    names <- pd_filter_player() %>% 
+      arrange(desc(date), desc(game)) %>% 
+      slice_max(date, n = 10) %>% 
+      select(champion) %>% 
+      pull()
+    
+    res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
+    
+    url <- fromJSON(rawToChar(res$content)) %>% 
+      mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^/lol-game-data/assets", "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default")) %>%
+      mutate(img = str_replace_all(squarePortraitPath, "^", "<img src='"),
+             img = str_replace_all(img, "$", "' height ='40'></img>")) %>% 
+      filter(name %in% names) %>% 
+      select(name, img)
+    
     pd_filter_player() %>% 
       arrange(desc(date), desc(game)) %>% 
       slice_max(date, n = 10) %>% 
-      select(date, champion, winner, kills, deaths, assists, kda, total_cs, game_length, side)
+      inner_join(url, by = c("champion" = "name")) %>% 
+      select(img, champion, date, winner, kills, deaths, assists, kda, total_cs, game_length, side)
   })
   
   ## Outputs ----
@@ -211,22 +227,11 @@ server <- function(input, output, session) {
     
     pd_last_ten()
     
-  })
-  
-  output$pd_last_game <- renderUI({
-    
-    names <- pd_last_ten() %>% 
-      select(champion)
-    
-    res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
-    url <- fromJSON(rawToChar(res$content)) %>% 
-      mutate(squarePortraitPath = str_replace_all(squarePortraitPath, "^/lol-game-data/assets", "https://raw.communitydragon.org/13.7/plugins/rcp-be-lol-game-data/global/default")) %>% 
-      filter(name == ((slice(pd_last_ten(), 1)) %>% select(champion) %>% pull())) %>% 
-      select(squarePortraitPath) %>% 
-      pull()
-    
-    
-  })
+  }, 
+  escape = FALSE, 
+  options = list(dom = "t",
+                 columnDefs = list(list(targets = "_all", searchable = FALSE)))
+  )
   
   # Split Data ----
   
