@@ -6,6 +6,8 @@ library(tidyverse)
 library(bslib)
 library(plotly)
 library(here)
+library(httr)
+library(jsonlite)
 
 # Data ----
 # Establish data tables

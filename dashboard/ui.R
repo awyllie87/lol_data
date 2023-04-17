@@ -48,15 +48,17 @@ ui <- dashboardPage(
       tabItem(tabName = "splits",
               
               fluidRow(
-                tabBox(id = "split_tabs",
-                       width = 12,
-                       tabPanel("Spring",
-                                dataTableOutput("split_spring")),
-                       
-                       tabPanel("Summer",
-                                dataTableOutput("split_summer")))
-              )
+                column(width = 2,
+                       radioButtons(inline = TRUE,
+                                    inputId = "splits_split_select",
+                                    label = tags$b("Split"),
+                                    choices = c("Spring", "Summer")
+                       ))
+              ),
               
+              fluidRow(
+                box(dataTableOutput("split_rankings"))
+              )
       ),
       
       ## Player Data ----
@@ -93,6 +95,13 @@ ui <- dashboardPage(
                               fluidRow(valueBoxOutput("pd_death_contrib"),
                                        valueBoxOutput("pd_dmg_share"),
                                        valueBoxOutput("pd_gold_share"))
+                     ),
+                     
+                     tabPanel("Champion Picks",
+                              fluidRow(dataTableOutput("pd_picks")
+                                       
+                              )
+                              
                      ),
                      
                      tabPanel("Last 10 Games",

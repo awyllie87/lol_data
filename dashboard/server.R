@@ -103,6 +103,8 @@ server <- function(input, output, session) {
                 choices = pd_player_select())
   })
   
+  ### Summary ----
+  
   output$pd_role <- renderValueBox({
     
     valueBox(paste(pd_player_stats()$role, collapse = " & "), 
@@ -162,6 +164,26 @@ server <- function(input, output, session) {
              "Average Gold Contribution", color = "orange")
   })
   
+  ### Champ Picks ----
+  
+  output$pd_picks <- renderDataTable(
+    
+    (pd_filter_player() %>% 
+      group_by(champion) %>% 
+      summarise(picked = n(),
+                wins = sum(winner),
+                losses = n() - sum(winner),
+                winrate = round((sum(winner) / n()) * 100, 2)) %>% 
+      arrange(desc(picked), desc(winrate))),
+    
+    options = list(dom = "t",
+                   columnDefs = list(list(targets = "_all", searchable = FALSE))
+    )
+    
+  )
+  
+  ### Last 10 Games ----
+  
   output$pd_last_game <- renderUI({
     
     res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
@@ -172,8 +194,6 @@ server <- function(input, output, session) {
       pull()
     
     last <- slice(pd_last_ten(), 1)
-    
-    
     
     tagList(
       last$winner,
@@ -189,27 +209,13 @@ server <- function(input, output, session) {
   
   # Split Data ----
   
-  output$split_spring <- renderDataTable(
-    
-    (lec_data_teams %>%
-       group_by(team_name) %>% 
-       filter((split == "Spring") & (playoffs == FALSE))  %>%  
-       filter(split_wins == max(split_wins)) %>% 
-       arrange(desc(split_wins)) %>% 
-       select(team_name, split_wins, split_losses) %>% 
-       distinct()
-     ),
-    
-    options = list(dom = "t",
-                   columnDefs = list(list(targets = "_all", searchable = FALSE))
-    )
-  )
+  ## Outputs ----
   
-  output$split_summer <- renderDataTable(
+  output$split_rankings <- renderDataTable(
     
     (lec_data_teams %>%
        group_by(team_name) %>% 
-       filter((split == "Summer") & (playoffs == FALSE))  %>%  
+       filter((split == input$splits_split_select) & (playoffs == FALSE))  %>%  
        filter(split_wins == max(split_wins)) %>% 
        arrange(desc(split_wins)) %>% 
        select(team_name, split_wins, split_losses) %>% 
@@ -222,6 +228,8 @@ server <- function(input, output, session) {
   )
   
   # Team Data ----
+  
+  ## Outputs ----
   
   output$roster <- renderDataTable(
     (get_roster(input$team_select)),
@@ -269,6 +277,8 @@ server <- function(input, output, session) {
   )
   
   # Player Analysis ----
+  
+  ## Outputs ----
   
   output$player_graph <- renderPlotly({
     
