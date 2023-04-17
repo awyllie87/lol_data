@@ -46,7 +46,7 @@ lec_data_teams <- lec_data_teams %>%
   filter(playoffs == FALSE) %>% 
   arrange(date) %>% 
   mutate(split_wins = cumsum(winner),
-         split_losses = n() - cumsum(winner), .after = split) %>% 
+         split_losses = cumsum(!winner), .after = split) %>% 
   ungroup()
 
 # Functions ----

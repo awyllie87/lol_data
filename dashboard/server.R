@@ -242,7 +242,7 @@ server <- function(input, output, session) {
     (lec_data_teams %>%
        group_by(team_name) %>% 
        filter((split == input$splits_split_select) & (playoffs == FALSE))  %>%  
-       filter(split_wins == max(split_wins)) %>% 
+       filter(split_wins == max(split_wins) & split_losses == max(split_losses)) %>% 
        arrange(desc(split_wins)) %>% 
        select(team_name, split_wins, split_losses) %>% 
        distinct()

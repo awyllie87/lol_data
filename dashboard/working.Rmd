@@ -240,11 +240,12 @@ lec_data_teams %>%
   group_by(split, team_name) %>% 
   filter(playoffs == FALSE) %>% 
   arrange(date) %>% 
-  mutate(split_wins = cumsum(winner)) %>% 
+  mutate(split_wins = cumsum(winner),
+         split_losses = cumsum(!winner)) %>% 
   ungroup() %>% 
   group_by(team_name) %>% 
   filter((split == "Spring") & (playoffs == FALSE)) %>%  
-  filter(split_wins == max(split_wins)) %>% 
+  filter(split_wins == max(split_wins) & split_losses == max(split_losses)) %>% 
   arrange(desc(split_wins)) %>% 
   select(team_name, split_wins, split_losses) %>% 
   distinct()
