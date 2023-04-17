@@ -171,9 +171,30 @@ tester <- lec_data_players %>%
   slice_max(date, n = 10) %>% 
   select(date, champion, winner, kills, deaths, assists, kda, total_cs, game_length, side)
 
-tester
+picks <- lec_data_players %>% 
+      filter(player_name == "Dajor") %>% 
+      group_by(champion) %>% 
+      summarise(picked = n(),
+                wins = sum(winner),
+                losses = n() - sum(winner),
+                winrate = round((sum(winner) / n()) * 100, 2),
+                kills = sum(kills),
+                kda = mean(kda),
+                kpg = round((sum(kills) / nrow(.)), 2),
+                dmg_pct = round((mean(damage_share) * 100), 2),
+                g_pct = round((mean(earned_gold_share) * 100), 2)) %>% 
+      arrange(desc(picked), desc(winrate))
+    
+kpt <- lec_data_players %>% 
+      filter(player_name == "Dajor") %>%  
+      group_by(champion) %>% 
+      summarise(kpt = round(mean(((kills + assists) / team_kills) * 100), 2))
 
-slice(tester, 3)
+picks %>% 
+  inner_join(kpt, by = "champion")
+    
+    picks <- picks %>% 
+      inner_join(kpt, by = champion)
 ```
 
 ```{r}

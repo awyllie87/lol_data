@@ -88,13 +88,13 @@ ui <- dashboardPage(
                                        valueBoxOutput("pd_games_played"),
                                        valueBoxOutput("pd_win_pct")),
                               
-                              fluidRow(valueBoxOutput("pd_kills_per_game"),
-                                       valueBoxOutput("pd_avg_kda"),
-                                       valueBoxOutput("pd_kill_participation")),
+                              fluidRow(valueBoxOutput("pd_kill_pct"),
+                                       valueBoxOutput("pd_death_pct"),
+                                       valueBoxOutput("pd_gold_share")),
                               
-                              fluidRow(valueBoxOutput("pd_death_contrib"),
+                              fluidRow(valueBoxOutput("pd_avg_kda"),
                                        valueBoxOutput("pd_dmg_share"),
-                                       valueBoxOutput("pd_gold_share"))
+                                       valueBoxOutput("pd_kills_per_game"))
                      ),
                      
                      tabPanel("Champion Picks",
@@ -105,7 +105,7 @@ ui <- dashboardPage(
                      ),
                      
                      tabPanel("Last 10 Games",
-                              fluidRow(uiOutput("pd_last_game"))
+                              fluidRow(dataTableOutput("pd_last_10"))
                      )
               )
               

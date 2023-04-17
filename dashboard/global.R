@@ -80,8 +80,8 @@ get_game_history <- function(x_team){
   team_games <- get_matches(x_team)
   
   lec_data %>% 
-    select(game_id, date, split, playoffs, game, side, team_name, winner) %>% 
     filter(game_id %in% team_games, team_name != x_team) %>%
+    select(date, split, playoffs, game, side, team_name, winner) %>% 
     distinct() %>% 
     mutate(winner = !winner) %>% 
     arrange(date, game)

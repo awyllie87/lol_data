@@ -86,6 +86,35 @@ server <- function(input, output, session) {
     
   })
   
+  pd_picks <- reactive({
+    
+    picks <- pd_filter_player() %>% 
+      group_by(champion) %>% 
+      summarise(picked = n(),
+                wins = sum(winner),
+                losses = n() - sum(winner),
+                winrate = round((sum(winner) / n()) * 100, 2),
+                kills = sum(kills),
+                deaths = sum(deaths),
+                assists = sum(assists),
+                avg_kda = round(mean(kda), 2),
+                kpg = round((sum(kills) / nrow(.)), 2),
+                dmg_pct = round((mean(damage_share) * 100), 2),
+                g_pct = round((mean(earned_gold_share) * 100), 2)) %>% 
+      arrange(desc(picked), desc(winrate))
+    
+    kpt <- pd_filter_player() %>% 
+      group_by(champion) %>% 
+      summarise(k_pct = round(mean(((kills + assists) / team_kills) * 100), 2))
+    
+    picks <- picks %>% 
+      inner_join(kpt, by = "champion") %>% 
+      relocate("k_pct", .after = "kpg")
+    
+    return(picks)
+    
+  })
+  
   pd_last_ten <- reactive({
     
     pd_filter_player() %>% 
@@ -140,13 +169,13 @@ server <- function(input, output, session) {
     
   })
   
-  output$pd_kill_participation <- renderValueBox({
+  output$pd_kill_pct <- renderValueBox({
     
     valueBox(paste0(pd_player_stats()$kpt,"%"), 
              "Kill Participation", color = "red")
   })
   
-  output$pd_death_contrib <- renderValueBox({
+  output$pd_death_pct <- renderValueBox({
     
     valueBox(paste0(pd_player_stats()$dpt, "%"), 
              "Death Contribution", color = "black")
@@ -168,13 +197,7 @@ server <- function(input, output, session) {
   
   output$pd_picks <- renderDataTable(
     
-    (pd_filter_player() %>% 
-      group_by(champion) %>% 
-      summarise(picked = n(),
-                wins = sum(winner),
-                losses = n() - sum(winner),
-                winrate = round((sum(winner) / n()) * 100, 2)) %>% 
-      arrange(desc(picked), desc(winrate))),
+    (pd_picks()),
     
     options = list(dom = "t",
                    columnDefs = list(list(targets = "_all", searchable = FALSE))
@@ -184,7 +207,16 @@ server <- function(input, output, session) {
   
   ### Last 10 Games ----
   
+  output$pd_last_10 <- renderDataTable({
+    
+    pd_last_ten()
+    
+  })
+  
   output$pd_last_game <- renderUI({
+    
+    names <- pd_last_ten() %>% 
+      select(champion)
     
     res = GET("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json")
     url <- fromJSON(rawToChar(res$content)) %>% 
@@ -193,17 +225,6 @@ server <- function(input, output, session) {
       select(squarePortraitPath) %>% 
       pull()
     
-    last <- slice(pd_last_ten(), 1)
-    
-    tagList(
-      last$winner,
-      img(src=url, height="10%", width="10%"),
-      last$kills,
-      "/",
-      last$deaths,
-      "/",
-      last$assists
-    )
     
   })
   
